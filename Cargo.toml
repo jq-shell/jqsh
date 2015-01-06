@@ -1,0 +1,16 @@
+[package]
+
+name = "jqsh"
+version = "0.0.1"
+authors = [ "madmalik <matthias.tellen@gmail.com>", "Fenhl <fenhl@fenhl.net>" ]
+
+[[bin]]
+name = "jqsh"
+path = "src/main.rs"
+
+[lib]
+name = "jqsh"
+path = "src/lib.rs"
+
+[dependencies.readline]
+git = "https://github.com/shaleh/rust-readline.git"
