@@ -1,5 +1,4 @@
 extern crate readline;
-use readline::{add_history, readline};
 
 fn main() {
     println!("press ctrl-c to exit");
