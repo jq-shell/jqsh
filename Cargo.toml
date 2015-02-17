@@ -12,5 +12,5 @@ path = "src/main.rs"
 name = "jqsh"
 path = "src/lib.rs"
 
-#[dependencies.readline]
-#git = "https://github.com/fenhl/rust-readline.git"
+[dependencies.readline]
+git = "https://github.com/gwenn/rust-readline.git"
