@@ -1,4 +1,4 @@
-pub mod lang;
+#![cfg_attr(test, deny(missing_docs, warnings))]
+#![forbid(unused_variables)]
 
-//#[cfg(test)]
-//mod scanner_test;
+pub mod lang;
