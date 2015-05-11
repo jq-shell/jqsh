@@ -18,5 +18,11 @@ bench = false
 name = "jqsh"
 path = "src/lib.rs"
 
+[dependencies.linked-hash-map]
+git = "https://github.com/contain-rs/linked-hash-map.git" # crates.io version is outdated
+
 [dependencies.readline]
 git = "https://github.com/gwenn/rust-readline.git"
+
+[dependencies.unicode]
+git = "https://github.com/fenhl/rust-unicode.git"
