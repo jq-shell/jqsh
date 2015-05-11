@@ -13,8 +13,8 @@ fn main() {
         readline::add_history(&source_utf8);
         let mut source = UString::from(source_utf8);
         loop {
-            let (filter, next_source) = parser::parse(source, repl_context.clone()).unwrap_or_else(|()| {
-                println!("jqsh: syntax error");
+            let (filter, next_source) = parser::parse(source, repl_context.clone()).unwrap_or_else(|err| {
+                println!("jqsh: syntax error: {:?}", err);
                 (Filter::Empty, None)
             });
             let (mut tx, rx) = channel::channel();
