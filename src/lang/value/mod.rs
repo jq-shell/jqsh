@@ -4,7 +4,7 @@ pub mod object;
 pub use self::array::Array;
 pub use self::object::Object;
 
-use std::{fmt, hash};
+use std::{fmt, hash, string};
 use std::iter::FromIterator;
 
 use unicode::UString;
@@ -38,7 +38,7 @@ impl fmt::Display for Value {
 
         match *self {
             Exception(ref name, ref meta) => {
-                try!(write!(w, "raise {:?}", name));
+                try!(write!(w, "raise {:?}", string::String::from(name)));
                 if meta.len() > 0 {
                     try!(write!(w, " {{"));
                     for (i, (k, v)) in meta.iter().enumerate() {
@@ -62,7 +62,7 @@ impl fmt::Display for Value {
                 try!(write!(w, "{}", n));
             }
             String(ref s) => {
-                try!(write!(w, "{:?}", s));
+                try!(write!(w, "{:?}", string::String::from(s)));
             }
             Array(ref a) => {
                 try!(write!(w, "["));
