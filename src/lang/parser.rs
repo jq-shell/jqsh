@@ -8,6 +8,7 @@ use lang::context::PrecedenceGroup;
 #[derive(Debug)]
 pub enum ParseError {
     InvalidToken(char),
+    NotAllowed(Filter),
     NotFullyParsed(Vec<Tf>)
 }
 
@@ -75,11 +76,21 @@ pub fn parse<C: Into<char>, T: IntoIterator<Item=C>>(code: T, context: Context) 
             unreachable!();
         }
     }
+    // define the macro used for testing if filters are allowed
+    macro_rules! try_filter {
+        ($f:expr) => {
+            if (context.filter_allowed)($f) {
+                $f
+            } else {
+                return Err(ParseError::NotAllowed($f));
+            }
+        }
+    }
     // remove leading and trailing whitespace as it is semantically irrelevant
     while let Some(&Tf::Token(Token::Whitespace)) = tf.first() { tf.remove(0); }
     while let Some(&Tf::Token(Token::Whitespace)) = tf.last() { tf.pop(); }
     // return an empty filter if the token list is empty
-    if tf.len() == 0 { return Ok(Filter::Empty); }
+    if tf.len() == 0 { return Ok(try_filter!(Filter::Empty)); }
     // parse operators in decreasing precedence
     for precedence_group in context.operators {
         match precedence_group {
@@ -92,10 +103,10 @@ pub fn parse<C: Into<char>, T: IntoIterator<Item=C>>(code: T, context: Context) 
                             tf.remove(idx);
                             continue;
                         }
-                        tf[idx] = Tf::Filter(Filter::AndThen {
-                            lhs: Box::new(if let Tf::Filter(ref lhs) = tf[idx] { lhs.clone() } else { Filter::Empty }),
+                        tf[idx] = Tf::Filter(try_filter!(Filter::AndThen {
+                            lhs: Box::new(if let Tf::Filter(ref lhs) = tf[idx] { lhs.clone() } else { try_filter!(Filter::Empty) }),
                             remaining_code: Clone::clone(&remaining_code)
-                        });
+                        }));
                         tf.remove(idx + 1);
                     } else if let Tf::Token(Token::AndThen(ref remaining_code)) = tf[idx] {
                         found = Some(remaining_code.clone()); // found an AndThen (`;;`), will be merged into a syntax tree with the element to its left
@@ -103,7 +114,7 @@ pub fn parse<C: Into<char>, T: IntoIterator<Item=C>>(code: T, context: Context) 
                 }
                 if let Some(ref remaining_code) = found {
                     // the code begins with an `;;`
-                    tf[0] = Tf::Filter(Filter::AndThen { lhs: Box::new(Filter::Empty), remaining_code: remaining_code.clone() });
+                    tf[0] = Tf::Filter(try_filter!(Filter::AndThen { lhs: Box::new(try_filter!(Filter::Empty)), remaining_code: remaining_code.clone() }));
                 }
             }
         }
