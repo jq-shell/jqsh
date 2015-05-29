@@ -7,6 +7,8 @@ pub use self::object::Object;
 use std::{fmt, hash, string};
 use std::iter::FromIterator;
 
+use num::BigRational;
+
 use unicode::UString;
 
 #[derive(Clone, Debug)]
@@ -14,7 +16,7 @@ pub enum Value {
     Exception(UString, Object<HashableValue, Value>),
     Null,
     Boolean(bool),
-    Number(i64), //TODO make this a big rational
+    Number(BigRational),
     String(UString),
     Array(Array<Value>),
     Object(Object<HashableValue, Value>),
@@ -26,7 +28,7 @@ pub enum HashableValue {
     Exception(UString, Object<HashableValue, Value>),
     Null,
     Boolean(bool),
-    Number(i64), //TODO make this a big rational
+    Number(BigRational),
     String(UString),
     Array(Array<HashableValue>),
     Object(Object<HashableValue, HashableValue>)
@@ -58,7 +60,7 @@ impl fmt::Display for Value {
             Boolean(b) => {
                 try!(write!(w, "{}", if b { "true" } else { "false" }));
             }
-            Number(n) => {
+            Number(ref n) => {
                 try!(write!(w, "{}", n));
             }
             String(ref s) => {
@@ -140,8 +142,8 @@ impl<'a> From<&'a HashableValue> for Value {
             HashableValue::Boolean(b) => {
                 Value::Boolean(b)
             }
-            HashableValue::Number(n) => {
-                Value::Number(n)
+            HashableValue::Number(ref n) => {
+                Value::Number(n.clone())
             }
             HashableValue::String(ref s) => {
                 Value::String(s.clone())
@@ -200,7 +202,7 @@ impl PartialEq for HashableValue {
             (&Exception(ref sl, _), &Exception(ref sr, _)) => sl == sr,
             (&Null, &Null) => true,
             (&Boolean(bl), &Boolean(br)) => bl == br,
-            (&Number(nl), &Number(nr)) => nl == nr,
+            (&Number(ref nl), &Number(ref nr)) => nl == nr,
             (&String(ref sl), &String(ref sr)) => sl == sr,
             (&Array(ref al), &Array(ref ar)) => al == ar,
             (&Object(ref ol), &Object(ref or)) => ol == or,

@@ -18,6 +18,9 @@ bench = false
 name = "jqsh"
 path = "src/lib.rs"
 
+[dependencies]
+num = "*"
+
 [dependencies.linked-hash-map]
 git = "https://github.com/contain-rs/linked-hash-map.git" # crates.io version is outdated
 
