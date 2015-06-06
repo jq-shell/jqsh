@@ -1,5 +1,4 @@
 use std::{fmt, mem};
-use std::ops::Deref;
 use std::sync::Mutex;
 
 use itertools::{Itertools, MultiPeek};

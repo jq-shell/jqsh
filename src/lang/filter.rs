@@ -1,6 +1,3 @@
-use std::fmt;
-use std::sync::Arc;
-
 use unicode::UString;
 
 use lang::parser::{self, Code};
