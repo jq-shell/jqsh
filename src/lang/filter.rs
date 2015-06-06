@@ -1,12 +1,15 @@
+use std::fmt;
+use std::sync::Arc;
+
 use unicode::UString;
 
-use lang::parser;
+use lang::parser::{self, Code};
 use lang::value::{Value, Object};
 use lang::channel::{Sender, Receiver, channel};
 
 #[derive(Clone, Debug)]
 pub enum Filter {
-    AndThen { lhs: Box<Filter>, remaining_code: UString },
+    AndThen { lhs: Box<Filter>, remaining_code: Code },
     Empty
 }
 

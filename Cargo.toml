@@ -19,6 +19,7 @@ name = "jqsh"
 path = "src/lib.rs"
 
 [dependencies]
+itertools = "*"
 num = "*"
 
 [dependencies.linked-hash-map]
