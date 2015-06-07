@@ -198,7 +198,7 @@ pub fn parse<T: Into<Code>>(code: T, context: Context) -> Result<Filter, ParseEr
     // return an empty filter if the token list is empty
     if tf.len() == 0 { return Ok(try_filter!(Filter::Empty)); }
     // parse operators in decreasing precedence
-    for precedence_group in context.operators {
+    for (_, precedence_group) in context.operators {
         match precedence_group {
             PrecedenceGroup::AndThen => {
                 let mut found = None; // flag any AndThen tokens and remember their contents

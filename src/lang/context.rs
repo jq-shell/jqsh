@@ -1,5 +1,8 @@
+use std::collections::BTreeMap;
 use std::fmt;
 use std::sync::Arc;
+
+use num::{FromPrimitive, BigRational};
 
 use lang::Filter;
 
@@ -13,7 +16,7 @@ pub struct Context {
     /// A function called each time the parser constructs a new filter anywhere in the syntax tree. If it returns false, the filter is replaced with one that generates an exception.
     pub filter_allowed: Arc<Box<Fn(&Filter) -> bool + Send + Sync>>,
     /// The context's operators, in decreasing precedence.
-    pub operators: Vec<PrecedenceGroup>
+    pub operators: BTreeMap<BigRational, PrecedenceGroup>
 }
 
 impl Context {
@@ -21,7 +24,9 @@ impl Context {
     pub fn interactive() -> Context {
         Context {
             filter_allowed: Arc::new(Box::new(|_| true)),
-            operators: vec![PrecedenceGroup::AndThen]
+            operators: vec![
+                (BigRational::from_integer(FromPrimitive::from_i32(-1000000).unwrap()), PrecedenceGroup::AndThen)
+            ].into_iter().collect()
         }
     }
 }
