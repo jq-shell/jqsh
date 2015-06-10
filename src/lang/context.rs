@@ -24,9 +24,11 @@ impl Context {
     pub fn interactive() -> Context {
         Context {
             filter_allowed: Arc::new(Box::new(|_| true)),
-            operators: vec![
-                (BigRational::from_integer(FromPrimitive::from_i32(-1000000).unwrap()), PrecedenceGroup::AndThen)
-            ].into_iter().collect()
+            operators: literator![
+                (-1000000, PrecedenceGroup::AndThen)
+            ].map(|(precedence, group)| {
+                (BigRational::from_integer(FromPrimitive::from_i32(precedence).unwrap()), group)
+            }).collect()
         }
     }
 }

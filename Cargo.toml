@@ -1,5 +1,4 @@
 [package]
-
 name = "jqsh"
 version = "0.0.1"
 authors = [
@@ -25,8 +24,8 @@ num = "*"
 [dependencies.linked-hash-map]
 git = "https://github.com/contain-rs/linked-hash-map.git" # crates.io version is outdated
 
-#[dependencies.literator]
-#git = "https://github.com/kmcallister/literator.git" # https://github.com/kmcallister/literator/pull/3
+[dependencies.literator]
+git = "https://github.com/kmcallister/literator.git"
 
 [dependencies.readline]
 git = "https://github.com/gwenn/rust-readline.git"
