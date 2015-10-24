@@ -6,11 +6,6 @@ use eventual::{self, Async};
 
 use lang::{Context, Filter, Value};
 
-pub enum ChannelError {
-    /// This part of the channel is already closed. Occurs when calling `close` multiple times or when calling `send` after `close`.
-    Closed
-}
-
 pub struct Sender {
     pub context: eventual::Complete<Context, ()>,
     pub values: chan::Sender<Value>
