@@ -18,6 +18,8 @@ name = "jqsh"
 path = "src/lib.rs"
 
 [dependencies]
+chan = "*"
+eventual = "*"
 itertools = "*"
 num = "*"
 

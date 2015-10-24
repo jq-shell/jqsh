@@ -1,79 +1,36 @@
 use std::{mem, thread};
-use std::sync::{mpsc, Future};
+
+use chan;
+
+use eventual::{self, Async};
 
 use lang::{Context, Filter, Value};
 
-#[derive(Debug)]
-pub enum ChannelError<T> {
-    /// An error on the underlying channel.
-    SendError(mpsc::SendError<T>),
-    /// This part of the channel is already closed. Occurs when calling `set_context` or `close` multiple times or when calling `send` after `close`.
+pub enum ChannelError {
+    /// This part of the channel is already closed. Occurs when calling `close` multiple times or when calling `send` after `close`.
     Closed
 }
 
-impl<T> From<mpsc::SendError<T>> for ChannelError<T> {
-    fn from(err: mpsc::SendError<T>) -> ChannelError<T> {
-        ChannelError::SendError(err)
-    }
-}
-
-#[derive(Clone)]
 pub struct Sender {
-    context: Option<mpsc::Sender<Context>>,
-    values: Option<mpsc::Sender<Value>>
-}
-
-impl Sender {
-    pub fn set_context(&mut self, ctxt: Context) -> Result<(), ChannelError<Context>> {
-        match self.context {
-            Some(ref tx) => {
-                try!(tx.send(ctxt));
-            }
-            None => { return Err(ChannelError::Closed); }
-        }
-        self.context = None;
-        Ok(())
-    }
-
-    /// Send a value.
-    pub fn send(&mut self, val: Value) -> Result<(), ChannelError<Value>> {
-        match self.values {
-            Some(ref tx) => {
-                try!(tx.send(val));
-            }
-            None => { return Err(ChannelError::Closed); }
-        }
-        Ok(())
-    }
-
-    /// Terminates transmission of values. Context and namespaces are unaffected.
-    pub fn close(&mut self) -> Result<(), ChannelError<Value>> {
-        if self.values.is_none() {
-            return Err(ChannelError::Closed);
-        }
-        self.values = None;
-        Ok(())
-    }
+    pub context: eventual::Complete<Context, ()>,
+    pub values: chan::Sender<Value>
+    //TODO namespaces
 }
 
 pub struct Receiver {
-    context: Future<Context>,
-    values: mpsc::Receiver<Value>
+    pub context: eventual::Future<Context, ()>,
+    pub values: chan::Receiver<Value>
+    //TODO namespaces
 }
 
 impl Receiver {
     /// A closed receiver with no values.
     pub fn empty(context: Context) -> Receiver {
-        let (_, val_rx) = mpsc::channel();
+        let (_, val_rx) = chan::async();
         Receiver {
-            context: Future::from_value(context),
+            context: eventual::Future::of(context),
             values: val_rx
         }
-    }
-
-    /// Returns the context passed to this channel, waiting until made available by the sending end.
-    pub fn context(&mut self) -> Context {
-        self.context.get()
     }
 
     /// Takes the receiving end of a channel, asynchronously runs it through a filter, and returns the output channel.
@@ -93,51 +50,57 @@ impl Receiver {
 
     /// Asynchronously forwards all received values to `dst` and closes `self`'s value channel.
     ///
-    /// Returns a handle to the forwarding thread, whose `join` returns `Ok(())` if all values have been successfully forwarded.
-    pub fn forward_values(&mut self, mut dst: Sender) -> thread::JoinHandle<Result<(), ChannelError<Value>>> {
-        let (_, rx) = mpsc::channel();
-        let vals = mem::replace(&mut self.values, rx);
-        thread::spawn(move || vals.iter().map(|val| dst.send(val)).fold(Ok(()), Result::and))
+    /// Returns `dst`'s context future sender.
+    pub fn forward_values(&mut self, dst: Sender) -> eventual::Complete<Context, ()> {
+        let (_, val_rx) = chan::async();
+        let vals_to_forward = mem::replace(&mut self.values, val_rx);
+        let Sender { context, values } = dst;
+        thread::spawn(move || {
+            for val in vals_to_forward {
+                values.send(val);
+            }
+        });
+        context
     }
 
     /// Split `self` into two new receivers, forwarding everything to both.
     pub fn split(self) -> (Receiver, Receiver) {
-        let (mut tx1, rx1) = channel();
-        let (mut tx2, rx2) = channel();
-        let Receiver { mut context, values } = self;
-        let mut context_tx1 = tx1.clone();
-        let mut context_tx2 = tx2.clone();
+        let (Sender { context: ctxt_tx1, values: val_tx1 }, rx1) = channel();
+        let (Sender { context: ctxt_tx2, values: val_tx2 }, rx2) = channel();
+        let Receiver { context, values } = self;
         thread::spawn(move || {
-            context_tx1.set_context(context.get()).unwrap();
-            context_tx2.set_context(context.into_inner()).unwrap();
+            let context = context.await().expect("failed to split contexts");
+            ctxt_tx1.complete(context.clone());
+            ctxt_tx2.complete(context);
         });
         thread::spawn(move || {
             for val in values {
-                tx1.send(val.clone()).unwrap();
-                tx2.send(val).unwrap();
+                val_tx1.send(val.clone());
+                val_tx2.send(val);
             }
         });
         (rx1, rx2)
     }
 }
 
-impl Iterator for Receiver {
+impl IntoIterator for Receiver {
     type Item = Value;
+    type IntoIter = chan::Iter<Value>;
 
-    fn next(&mut self) -> Option<Value> {
-        self.values.recv().ok()
+    fn into_iter(self) -> chan::Iter<Value> {
+        self.values.into_iter()
     }
 }
 
 pub fn channel() -> (Sender, Receiver) {
-    let (ctxt_tx, ctxt_rx) = mpsc::channel();
-    let (val_tx, val_rx) = mpsc::channel();
+    let (ctxt_tx, ctxt_fut) = eventual::Future::pair();
+    let (val_tx, val_rx) = chan::async();
     let tx = Sender {
-        context: Some(ctxt_tx),
-        values: Some(val_tx)
+        context: ctxt_tx,
+        values: val_tx
     };
     let rx = Receiver {
-        context: Future::from_receiver(ctxt_rx),
+        context: ctxt_fut,
         values: val_rx
     };
     (tx, rx)

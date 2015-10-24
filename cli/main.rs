@@ -1,6 +1,9 @@
+extern crate eventual;
 extern crate jqsh;
 extern crate readline;
 extern crate unicode;
+
+use eventual::Async;
 
 use unicode::UString;
 
@@ -15,9 +18,9 @@ fn main() {
             println!("jqsh: syntax error: {:?}", err);
             Filter::Empty
         });
-        let mut output = channel::Receiver::empty(repl_context).filter(&filter);
-        repl_context = output.context();
-        for value in output {
+        let channel::Receiver { context, values } = channel::Receiver::empty(repl_context).filter(&filter);
+        repl_context = context.await().expect("failed to get repl output context");
+        for value in values {
             println!("{}", value);
         }
     }
