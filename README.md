@@ -4,4 +4,4 @@ With a [prototype](https://github.com/jq-shell/python-jqsh) having been written 
 
 This is version 0.0.1 of jqsh ([semver](http://semver.org/)).
 
-For more info on the project, see [the wiki](https://gitlab.com/jqsh/jqsh/wikis/home).
+For more info on the project, see [the wiki](https://github.com/jq-shell/jqsh/wiki), or join us at [functionalprogramming.slack.com](http://fpchat.com/) #jqsh.
