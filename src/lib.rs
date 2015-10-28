@@ -1,4 +1,3 @@
-#![feature(iter_order)]
 #![cfg_attr(test, deny(missing_docs, warnings))]
 #![forbid(unused_variables)]
 
