@@ -7,7 +7,7 @@ The approval process is as follows:
 
 The core members are:
 
-*   @fenhl
-*   @madmalik
+*   [@fenhl](https://github.com/fenhl)
+*   [@madmalik](https://github.com/madmalik)
 
 This list is subject to change if and when the project starts to attract additional regular contributors.
