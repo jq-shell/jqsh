@@ -1,5 +1,5 @@
 use std::hash;
-use std::iter::{order, FromIterator};
+use std::iter::FromIterator;
 use std::sync::mpsc;
 
 use lang::channel::Receiver;
@@ -42,7 +42,7 @@ impl<T> From<Vec<T>> for Array<T> {
 
 impl From<Receiver> for Array<Value> {
     fn from(rx: Receiver) -> Array<Value> {
-        Array { buffer: rx.collect() } //TODO implement lazy arrays
+        Array { buffer: rx.values.into_iter().collect() } //TODO implement lazy arrays
     }
 }
 
@@ -110,7 +110,7 @@ impl<'a, T> IntoIterator for &'a Array<T> {
 
 impl<T, U> PartialEq<Array<U>> for Array<T> where T: PartialEq<U> {
     fn eq(&self, other: &Array<U>) -> bool {
-        order::eq(self.iter(), other.iter())
+        self.iter().eq(other.iter())
     }
 }
 
