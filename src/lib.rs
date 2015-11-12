@@ -4,7 +4,6 @@
 extern crate chan;
 extern crate eventual;
 extern crate itertools;
-extern crate linked_hash_map;
 extern crate num;
 extern crate unicode;
 
