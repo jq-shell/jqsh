@@ -24,9 +24,9 @@ impl Context {
     pub fn interactive() -> Context {
         Context {
             filter_allowed: Arc::new(Box::new(|_| true)),
-            operators: literator![
+            operators: vec![
                 (-1000000, PrecedenceGroup::AndThen)
-            ].map(|(precedence, group)| {
+            ].into_iter().map(|(precedence, group)| {
                 (BigRational::from_integer(FromPrimitive::from_i32(precedence).unwrap()), group)
             }).collect()
         }
