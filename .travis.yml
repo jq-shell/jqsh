@@ -1,4 +1,3 @@
 language: rust
-rust: beta
 notifications:
   irc: "chat.freenode.net#jqsh"
