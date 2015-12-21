@@ -8,3 +8,4 @@ extern crate num;
 extern crate unicode;
 
 pub mod lang;
+mod util;

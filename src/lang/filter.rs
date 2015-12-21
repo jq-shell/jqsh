@@ -5,10 +5,18 @@ use eventual::Async;
 use lang::parser::{self, Code};
 use lang::value::{Value, Object};
 use lang::channel::{Sender, Receiver, channel};
+use util::FilterFn;
 
 #[derive(Clone, Debug)]
 pub enum Filter {
-    AndThen { lhs: Box<Filter>, remaining_code: Code },
+    AndThen {
+        lhs: Box<Filter>,
+        remaining_code: Code
+    },
+    Custom {
+        attributes: Vec<Filter>,
+        run: Box<FilterFn>
+    },
     Empty
 }
 
@@ -37,6 +45,9 @@ impl Filter {
                 let rhs_in_ctxt = input.forward_values(rhs_in_tx); // rhs receives its values from the `;;` filter's input...
                 rhs_in_ctxt.complete(lhs_ctxt); // ...and its context from the output of lhs.
                 rhs.run(rhs_in_rx, output); // finally, rhs is run synchronously, with output directly into the `;;` filter's output.
+            }
+            Custom { ref attributes, ref run } => {
+                run(attributes, input, output)
             }
             Empty => {
                 let Receiver { context: in_ctxt, values: _ } = input;
