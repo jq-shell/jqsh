@@ -7,5 +7,6 @@ extern crate itertools;
 extern crate num;
 extern crate unicode;
 
+pub mod builtin;
 pub mod lang;
 mod util;

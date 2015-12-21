@@ -1,5 +1,5 @@
 use std::{fmt, mem};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use itertools::{Itertools, MultiPeek};
 
@@ -7,18 +7,25 @@ use unicode::{self, UString};
 
 use lang::{Context, Filter};
 use lang::context::PrecedenceGroup;
+use util::Labeled;
 
 #[derive(Debug)]
 pub enum ParseError {
     InvalidToken(char),
+    MismatchedParens(Token, Tf),
     NotAllowed(Filter),
-    NotFullyParsed(Vec<Tf>)
+    NotFullyParsed(Vec<Tf>),
+    UnbalancedParen(Token)
 }
 
 #[derive(Debug)]
 pub enum Token {
     /// An unrecognized character
     Invalid(char),
+    /// An opening parenthesis `(`
+    OpenParen,
+    /// A closing parenthesis `)`
+    CloseParen,
     /// The sequential execution operator `;;`, and all following code
     AndThen(Code),
     /// A sequence of one or more whitespace characters
@@ -145,7 +152,9 @@ impl Iterator for Tokens {
         use self::Token::*;
 
         match self.code.next() {
-            Some(' ') => { Some(Whitespace) }
+            Some(' ') => Some(Whitespace),
+            Some('(') => Some(OpenParen),
+            Some(')') => Some(CloseParen),
             Some(';') => {
                 if self.code.peek() == Some(';') {
                     self.code.next(); // discard the second semicolon
@@ -154,7 +163,7 @@ impl Iterator for Tokens {
                     Some(Invalid(';'))
                 }
             }
-            Some(c) => { Some(Invalid(c)) }
+            Some(c) => Some(Invalid(c)),
             None => None
         }
     }
@@ -169,7 +178,11 @@ pub enum Tf {
 
 /// Convert a sequence of tokens into an executable filter.
 pub fn parse<T: Into<Code>>(code: T, context: Context) -> Result<Filter, ParseError> {
-    let mut tf = Tokens::new(code, context.clone()).map(Tf::Token).collect::<Vec<_>>(); // the list of tokens and filters on which the in-place parsing algorithm operates
+    parse_inner(Tokens::new(code, context.clone()).map(Tf::Token), context)
+}
+
+fn parse_inner<I: IntoIterator<Item = Tf>>(tf_iter: I, context: Context) -> Result<Filter, ParseError> {
+    let mut tf = tf_iter.into_iter().collect::<Vec<_>>(); // the list of tokens and filters on which the in-place parsing algorithm operates
     // error if any invalid token is found
     if let Some(pos) = tf.iter().position(|i| if let Tf::Token(Token::Invalid(_)) = *i { true } else { false }) {
         if let Tf::Token(Token::Invalid(c)) = tf[pos] {
@@ -198,7 +211,7 @@ pub fn parse<T: Into<Code>>(code: T, context: Context) -> Result<Filter, ParseEr
     // return an empty filter if the token list is empty
     if tf.len() == 0 { return Ok(try_filter!(Filter::Empty)); }
     // parse operators in decreasing precedence
-    for (_, precedence_group) in context.operators {
+    for (_, precedence_group) in context.operators.clone().into_iter().rev() { // iterate from highest to lowest precedence
         match precedence_group {
             PrecedenceGroup::AndThen => {
                 let mut found = None; // flag any AndThen tokens and remember their contents
@@ -213,8 +226,15 @@ pub fn parse<T: Into<Code>>(code: T, context: Context) -> Result<Filter, ParseEr
                             lhs: Box::new(if let Tf::Filter(ref lhs) = tf[idx] { lhs.clone() } else { try_filter!(Filter::Empty) }),
                             remaining_code: remaining_code
                         }));
-                    } else if let Tf::Token(Token::AndThen(remaining_code)) = tf.remove(idx) {
-                        found = Some(remaining_code); // found an AndThen (`;;`), will be merged into a syntax tree with the element to its left
+                    } else {
+                        match tf.remove(idx) {
+                            Tf::Token(Token::AndThen(remaining_code)) => {
+                                found = Some(remaining_code); // found an AndThen (`;;`), will be merged into a syntax tree with the element to its left
+                            }
+                            tf_item => {
+                                tf.insert(idx, tf_item);
+                            }
+                        }
                     }
                 }
                 if let Some(remaining_code) = found {
@@ -223,6 +243,61 @@ pub fn parse<T: Into<Code>>(code: T, context: Context) -> Result<Filter, ParseEr
                         lhs: Box::new(try_filter!(Filter::Empty)),
                         remaining_code: remaining_code
                     })));
+                }
+            }
+            PrecedenceGroup::Circumfix => {
+                let mut paren_balance = 0; // how many closing parens have not been matched by opening parens
+                let mut paren_start = None; // the index of the outermost closing paren
+                for idx in (0..tf.len()).rev() { // iterate right-to-left for in-place manipulation
+                    match tf[idx] {
+                        Tf::Token(Token::CloseParen) => {
+                            if paren_balance == 0 {
+                                paren_start = Some(idx);
+                            }
+                            paren_balance += 1;
+                        }
+                        Tf::Token(Token::OpenParen) => {
+                            paren_balance -= 1;
+                            if paren_balance < 0 {
+                                return Err(ParseError::UnbalancedParen(Token::OpenParen));
+                            } else if paren_balance == 0 {
+                                if let Some(paren_start) = paren_start {
+                                    if let Tf::Token(Token::CloseParen) = tf[paren_start] {
+                                        tf.remove(paren_start);
+                                        //let inner = tf.drain(idx + 1..paren_start).collect::<Vec<_>>(); //TODO use this when stabilized
+                                        let mut inner = vec![];
+                                        for _ in idx + 1..paren_start {
+                                            inner.push(tf.remove(idx + 1));
+                                        }
+                                        tf[idx] = Tf::Filter(try_filter!(Filter::Custom {
+                                            attributes: vec![try!(parse_inner(inner, context.clone()))],
+                                            run: Box::new(Labeled::new("<filter group (α)>", Arc::new(|attrs, input, output| {
+                                                assert_eq!(attrs.len(), 1);
+                                                attrs[0].run(input, output)
+                                            })))
+                                        }));
+                                    } else {
+                                        return Err(ParseError::MismatchedParens(Token::OpenParen, tf.remove(paren_start)));
+                                    }
+                                } else {
+                                    unreachable!();
+                                }
+                                paren_start = None;
+                            }
+                        }
+                        _ => { continue; }
+                    }
+                }
+                if paren_balance > 0 {
+                    if let Some(paren_start) = paren_start {
+                        if let Tf::Token(Token::CloseParen) = tf[paren_start] {
+                            return Err(ParseError::UnbalancedParen(Token::CloseParen));
+                        } else {
+                            unreachable!();
+                        }
+                    } else {
+                        unreachable!();
+                    }
                 }
             }
         }

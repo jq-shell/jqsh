@@ -12,11 +12,7 @@ pub struct Labeled<T> {
 }
 
 impl<T> Labeled<T> {
-    pub fn new(value: T) -> Labeled<T> {
-        Labeled::new_with_label("", value)
-    }
-
-    pub fn new_with_label<S: Into<String>>(label: S, value: T) -> Labeled<T> {
+    pub fn new<S: Into<String>>(label: S, value: T) -> Labeled<T> {
         Labeled {
             label: label.into(),
             value: value
@@ -26,7 +22,7 @@ impl<T> Labeled<T> {
 
 impl<T> From<T> for Labeled<T> {
     fn from(value: T) -> Labeled<T> {
-        Labeled::new(value)
+        Labeled::new("", value)
     }
 }
 

@@ -7,10 +7,11 @@ use eventual::Async;
 
 use unicode::UString;
 
-use jqsh::lang::{Context, Filter, channel, parser};
+use jqsh::builtin;
+use jqsh::lang::{Filter, channel, parser};
 
 fn main() {
-    let mut repl_context = Context::interactive();
+    let mut repl_context = builtin::context();
     while let Some(source_utf8) = readline::readline("jqsh> ") {
         readline::add_history(&source_utf8);
         let source = UString::from(source_utf8);
