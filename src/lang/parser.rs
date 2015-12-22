@@ -152,7 +152,16 @@ impl Iterator for Tokens {
         use self::Token::*;
 
         match self.code.next() {
+            Some('\t') |
+            Some('\n') |
+            Some('\r') |
             Some(' ') => Some(Whitespace),
+            Some('#') => {
+                while self.code.peek().map(|c| c != '\n').unwrap_or(false) {
+                    self.code.next(); // discard comment contents
+                }
+                Some(Whitespace) // comments are treated as whitespace
+            }
             Some('(') => Some(OpenParen),
             Some(')') => Some(CloseParen),
             Some(';') => {
