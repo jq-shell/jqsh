@@ -152,6 +152,9 @@ impl Iterator for Tokens {
         use self::Token::*;
 
         match self.code.next() {
+            Some('\t') |
+            Some('\n') |
+            Some('\r') |
             Some(' ') => Some(Whitespace),
             Some('(') => Some(OpenParen),
             Some(')') => Some(CloseParen),
